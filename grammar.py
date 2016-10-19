@@ -4,9 +4,9 @@ class FnNode:
         self.children = children
         self.name = name
 
-    def evaluate(self):
-        args = [child.evaluate() for child in self.children]
-        return self.fn(*args)
+    def evaluate(self, i):
+        args = [child.evaluate(i) for child in self.children]
+        return self.fn(*args, i = i)
 
     def disp(self, indent = 0):
         print("  "*indent + self.name)
@@ -19,12 +19,12 @@ class IfNode:
         self.true_expr = true_expr
         self.false_expr = false_expr
 
-    def evaluate(self):
-        cond_value = self.cond_expr.evaluate()
+    def evaluate(self, i):
+        cond_value = self.cond_expr.evaluate(i)
         if cond_value:
-            return self.true_expr.evaluate()
+            return self.true_expr.evaluate(i)
         else:
-            return self.false_expr.evaluate()
+            return self.false_expr.evaluate(i)
 
     def disp(self, indent = 0):
         print("  "*indent + "if")
@@ -32,11 +32,27 @@ class IfNode:
         self.true_expr.disp(indent + 1)
         self.false_expr.disp(indent + 1)
 
+class OffsetNode:
+    def __init__(self, expr, offset_expr):
+        self.expr = expr
+        self.offset_expr = offset_expr
+
+    def evaluate(self, i):
+        offset = self.offset_expr.evaluate(i)
+        if i - offset < 0:
+            raise IndexError
+        return self.expr.evaluate(i - offset)
+
+    def disp(self, indent = 0):
+        print("  "*indent + "offset")
+        self.expr.disp(indent + 1)
+        self.offset_expr.disp(indent + 1)
+
 class LiteralNode:
     def __init__(self, value):
         self.value = value
 
-    def evaluate(self):
+    def evaluate(self, i):
         return self.value
 
     def disp(self, indent = 0):
@@ -86,6 +102,9 @@ class Grammar:
                 elif head == 'if':
                     children = self.build_children(translation[1:], literal)
                     return IfNode(*children)
+                elif head == 'offset':
+                    children = self.build_children(translation[1:], literal)
+                    return OffsetNode(*children)
                 else:
                     children = self.build_children(translation[1:], True)
                     return LiteralNode(eval(head + ''.join(children)))                    
